@@ -1,6 +1,8 @@
 import React from "react";
 import axios from "axios";
 
+//Create a Axios instance with default uri 
+//and send a token for authorization in header
 const axiosGithubGraphQL = axios.create({
   baseURL: "https://api.github.com/graphql",
   headers: {
@@ -8,6 +10,7 @@ const axiosGithubGraphQL = axios.create({
   },
 });
 
+//this is the query to send as data in post request.
 const GET_ISSUES_OF_REPOSITORY =  `
 query($organization: String!, $repository: String!){
   organization(login: $organization){
@@ -30,8 +33,9 @@ query($organization: String!, $repository: String!){
 }
 `;
 
-
-
+//this function take in the path in state, split path to get organization and repo
+//send the query with necessary varibles via post request using axios instance
+//this will return data as a promise if success.
 const getIssueOfRepository = path => {
   const [organization, repository] = path.split('/')
 
@@ -41,7 +45,7 @@ const getIssueOfRepository = path => {
   })
 }
 
-//HOC for this.setState in onFetchFromGithub
+//this HOC return a function that return an object that setState need to update.
 const resolveIssuesQuery = queryResult => () => ({
   organization: queryResult.data.data.organization,
   errors: queryResult.data.errors,
@@ -54,20 +58,25 @@ class App extends React.Component {
     error: null,
   };
 
+  //initial fetch
   componentDidMount() {
     this.onFetchFromGithub(this.state.path);
   }
 
+  //after recieve an promise, the data will pass in resolveIssuesQuery() HOC that
+  //=> () => an object that setState will use to update organization and errors state.
   onFetchFromGithub = path => {
     getIssueOfRepository(path).then(queryResult => 
       this.setState(resolveIssuesQuery(queryResult))  
     )
   }
 
+  //update state when value of input change
   onChange = (event) => {
     this.setState({ path: event.target.value });
   };
 
+  //fetch when submit
   onSubmit = (event) => {
     this.onFetchFromGithub(this.state.path);
     event.preventDefault();
@@ -96,6 +105,7 @@ class App extends React.Component {
   }
 }
 
+//recieve organization and errors from state
 const Organization = ({organization, errors}) => {
   if(errors) {
     return(
@@ -117,6 +127,7 @@ const Organization = ({organization, errors}) => {
   )
 }
 
+//recieve repository from Organization component to render a list of issues.
 const Repository = ({repository}) => {
 
   return(
