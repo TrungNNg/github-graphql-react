@@ -8,34 +8,60 @@ const axiosGithubGraphQL = axios.create({
   },
 });
 
-const GET_ORGANIZATION = `
-{
-  organization(login: "the-road-to-learn-react"){
+const GET_ISSUES_OF_REPOSITORY =  `
+query($organization: String!, $repository: String!){
+  organization(login: $organization){
     name
     url
+    repository(name:$repository){
+      name
+      url
+      issues(last: 5){
+        edges {
+          node {
+            id
+            title
+            url
+          }
+        }
+      }
+    }
   }
 }
 `;
 
+
+
+const getIssueOfRepository = path => {
+  const [organization, repository] = path.split('/')
+
+  return axiosGithubGraphQL.post('', {
+    query: GET_ISSUES_OF_REPOSITORY,
+    variables: { organization, repository},
+  })
+}
+
+//HOC for this.setState in onFetchFromGithub
+const resolveIssuesQuery = queryResult => () => ({
+  organization: queryResult.data.data.organization,
+  errors: queryResult.data.errors,
+})
+
 class App extends React.Component {
   state = {
-    path: "the-road-to-learn-react/the-road-to-learn-react",
+    path: "facebook/create-react-app",
     organization: null,
     error: null,
   };
 
   componentDidMount() {
-    this.onFetchFromGithub();
+    this.onFetchFromGithub(this.state.path);
   }
 
-  onFetchFromGithub = () => {
-    axiosGithubGraphQL
-    .post('',{query: GET_ORGANIZATION})
-    .then(result => this.setState(() => ({
-      organization: result.data.data.organization,
-      error: result.data.error,
-    })),
-    );
+  onFetchFromGithub = path => {
+    getIssueOfRepository(path).then(queryResult => 
+      this.setState(resolveIssuesQuery(queryResult))  
+    )
   }
 
   onChange = (event) => {
@@ -43,6 +69,7 @@ class App extends React.Component {
   };
 
   onSubmit = (event) => {
+    this.onFetchFromGithub(this.state.path);
     event.preventDefault();
   };
 
@@ -84,8 +111,29 @@ const Organization = ({organization, errors}) => {
     <p>
       <strong>Issues from Organiation: </strong>
       <a href={organization.url}>{organization.name}</a>
+      <Repository repository={organization.repository}/>
     </p>
   </div>
+  )
+}
+
+const Repository = ({repository}) => {
+
+  return(
+    <div>
+      <p>
+        <strong>In Repository: </strong>
+        <a href={repository.url}>{repository.name}</a>
+      </p>
+
+      <ul>
+        {repository.issues.edges.map(issue => (
+          <li key={issue.node.id}>
+            <a href={issue.node.url}>{issue.node.title}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
